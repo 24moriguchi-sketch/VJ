@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SIGNAL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --steel:#c9ccd1; --graphite:#1c1e23; --blue:#2440ff; --mist:#e6e8eb;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+html,body{height:100%;margin:0;background:var(--steel);color:var(--graphite);overflow:hidden;
+  font-family:"Zen Kaku Gothic New","Hiragino Sans",sans-serif}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
+.frame{position:fixed;inset:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));
+  pointer-events:none;display:grid;grid-template-rows:auto 1fr auto}
+.top,.bottom{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
+.logo{font-family:Syne,sans-serif;font-weight:800;font-size:clamp(22px,3.2vw,34px);letter-spacing:-.02em}
+#scene{font-family:Syne,sans-serif;font-weight:500;font-size:14px}
+#hint{font-size:13px;max-width:36ch;line-height:1.6}
+.bar{width:min(220px,40vw);height:3px;background:rgba(28,30,35,.2);position:relative}
+#fill{position:absolute;inset:0 auto 0 0;width:0;background:var(--blue)}
+#start{position:fixed;inset:0;z-index:5;background:var(--steel);display:grid;place-items:center;padding:24px}
+#start .in{max-width:560px}
+#start h1{font-family:Syne,sans-serif;font-weight:800;font-size:clamp(72px,16vw,180px);line-height:.85;margin:0 0 28px;letter-spacing:-.05em}
+#start p{margin:0 0 28px;line-height:1.8;font-size:15px;max-width:34ch}
+.btns{display:flex;gap:12px;flex-wrap:wrap}
+button{font:inherit;font-weight:700;font-size:15px;padding:13px 26px;cursor:pointer;border:2px solid var(--graphite);
+  background:var(--graphite);color:var(--mist);border-radius:0}
+button.sub{background:transparent;color:var(--graphite)}
+button:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
+#err{margin-top:16px;font-size:13px;color:var(--blue);min-height:1.4em}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="frame">
+  <div class="top"><div class="logo">SIGNAL</div><div id="scene"></div></div>
+  <div></div>
+  <div class="bottom"><div id="hint"></div><div class="bar"><div id="fill"></div></div></div>
+</div>
+<div id="start"><div class="in">
+  <h1>SIGNAL</h1>
+  <p>カメラに映るあなたを、点・線・時間の3つの表現に変換します。動けば動くほど画面が揺れ、次のシーンへ切り替わります。</p>
+  <div class="btns"><button id="go">カメラで始める</button><button id="mouse" class="sub">マウスで試す</button></div>
+  <div id="err"></div>
+</div></div>
+<video id="v" playsinline muted style="display:none"></video>
+<script>
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const video=document.getElementById('v');
+const sceneEl=document.getElementById('scene'),hintEl=document.getElementById('hint'),fill=document.getElementById('fill');
+const GW=96,GH=72,HIST=48;
+const sm=document.createElement('canvas');sm.width=GW;sm.height=GH;
+const sx=sm.getContext('2d',{willReadFrequently:true});
+let W,H,useCam=false,mouse={x:.5,y:.5,moved:0};
+let lum=new Float32Array(GW*GH),prev=null,motion=new Float32Array(GW*GH),hist=[];
+let scene=0,energy=0,flash=0,running=false;
+const SCENES=[
+  {name:'1 / 3  Dot',hint:'体を揺らすと、点が青く弾けます'},
+  {name:'2 / 3  Line',hint:'あなたの輪郭が等高線になります。手を大きく振って'},
+  {name:'3 / 3  Time',hint:'画面の上と下で時間がずれています。ゆっくり動いてみて'}
+];
+const BLUE='#2440ff',INK='#1c1e23',BG='#c9ccd1';
+
+function resize(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0)}
+addEventListener('resize',resize);resize();
+
+function sample(t){
+  if(useCam&&video.readyState>=2){
+    const vr=video.videoWidth/video.videoHeight,r=GW/GH;let w=GW,h=GH;
+    if(vr>r){w=GH*vr}else{h=GW/vr}
+    sx.save();sx.translate(GW,0);sx.scale(-1,1);sx.drawImage(video,(GW-w)/2,(GH-h)/2,w,h);sx.restore();
+  }else{ // マウス用の擬似映像
+    sx.fillStyle='#ddd';sx.fillRect(0,0,GW,GH);
+    const g=sx.createRadialGradient(mouse.x*GW,mouse.y*GH,2,mouse.x*GW,mouse.y*GH,26);
+    g.addColorStop(0,'#000');g.addColorStop(1,'rgba(0,0,0,0)');sx.fillStyle=g;sx.fillRect(0,0,GW,GH);
+    sx.fillStyle='#555';sx.beginPath();sx.arc(GW/2+Math.sin(t/900)*20,GH*.62,14,0,6.28);sx.fill();
+  }
+  const d=sx.getImageData(0,0,GW,GH).data;
+  const g=new Float32Array(GW*GH);
+  for(let i=0;i<GW*GH;i++)g[i]=(d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11)/255;
+  let total=0;
+  if(prev)for(let i=0;i<GW*GH;i++){const df=Math.abs(g[i]-prev[i]);motion[i]=df>.1?Math.min(1,df*3):motion[i]*.7;total+=df>.1?df:0}
+  prev=g;lum=g;
+  hist.unshift(g);if(hist.length>HIST)hist.pop();
+  return total/(GW*GH);
+}
+
+function drawDot(t){
+  const cw=W/GW,ch=H/GH,step=Math.max(cw,ch)*1.1;
+  const cols=Math.ceil(W/step),rows=Math.ceil(H/step);
+  for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
+    const gx=Math.min(GW-1,(x*step/W*GW)|0),gy=Math.min(GH-1,(y*step/H*GH)|0),i=gy*GW+gx;
+    const dark=1-lum[i],m=motion[i];
+    const r=dark*step*.55+m*step*.4;
+    if(r<.6)continue;
+    const off=m*step*1.5;
+    ctx.fillStyle=m>.25?BLUE:INK;
+    ctx.beginPath();ctx.arc(x*step+step/2+(Math.random()-.5)*off,y*step+step/2+(Math.random()-.5)*off,r,0,6.28);ctx.fill();
+  }
+}
+
+function drawLine(t){
+  const rows=46,gap=H/rows,amp=gap*2.6;
+  ctx.lineWidth=1.4;ctx.lineJoin='round';
+  for(let r=0;r<rows;r++){
+    const gy=Math.min(GH-1,(r/rows*GH)|0);let hot=0;
+    ctx.beginPath();
+    for(let gx=0;gx<GW;gx++){
+      const i=gy*GW+gx,m=motion[i];hot+=m;
+      const px=gx/(GW-1)*W;
+      const py=r*gap+gap/2-(1-lum[i])*amp+Math.sin(gx*.8+t/60)*m*gap*1.8;
+      gx?ctx.lineTo(px,py):ctx.moveTo(px,py);
+    }
+    ctx.strokeStyle=hot>6?BLUE:INK;ctx.stroke();
+  }
+}
+
+function drawTime(){
+  const cw=W/GW,ch=H/GH;
+  for(let gy=0;gy<GH;gy++){
+    const f=hist[Math.min(hist.length-1,Math.floor(gy/GH*hist.length))];
+    for(let gx=0;gx<GW;gx++){
+      const v=f[gy*GW+gx];
+      if(v>.62)continue;
+      ctx.fillStyle=motion[gy*GW+gx]>.3?BLUE:INK;
+      const s=(1-v)*1.05;
+      ctx.fillRect(gx*cw+cw*(1-s)/2,gy*ch,cw*s,ch+.5);
+    }
+  }
+}
+
+function loop(t){
+  const m=sample(t);
+  ctx.fillStyle=BG;ctx.fillRect(0,0,W,H);
+  [drawDot,drawLine,drawTime][scene](t);
+  // 動きの量でエネルギーが溜まり、満タンで次のシーンへ
+  energy=Math.min(1,energy+m*.9);
+  fill.style.width=(energy*100)+'%';
+  if(energy>=1){scene=(scene+1)%3;energy=0;flash=1;setText()}
+  if(flash>0){ctx.fillStyle=`rgba(36,64,255,${flash*.9})`;ctx.fillRect(0,0,W,H);flash-=.06}
+  requestAnimationFrame(loop);
+}
+function setText(){sceneEl.textContent=SCENES[scene].name;hintEl.textContent=SCENES[scene].hint}
+
+function begin(){document.getElementById('start').style.display='none';setText();if(!running){running=true;requestAnimationFrame(loop)}}
+document.getElementById('go').onclick=async()=>{
+  try{const s=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'},audio:false});
+    video.srcObject=s;await video.play();useCam=true;begin();
+  }catch(e){document.getElementById('err').textContent='カメラを起動できませんでした。ブラウザのカメラ許可を確認するか、「マウスで試す」を押してください。'}
+};
+document.getElementById('mouse').onclick=()=>{useCam=false;begin()};
+addEventListener('pointermove',e=>{mouse.x=e.clientX/W;mouse.y=e.clientY/H});
+</script>
+</body>
+</html>
