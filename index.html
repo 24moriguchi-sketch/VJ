@@ -3,158 +3,231 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SIGNAL</title>
+<title>SHUTTER</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;800&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Zen+Kaku+Gothic+New:wght@400;700&display=swap" rel="stylesheet">
 <style>
-:root{
-  --steel:#c9ccd1; --graphite:#1c1e23; --blue:#2440ff; --mist:#e6e8eb;
-  box-sizing:border-box;
-  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
-}
-html,body{height:100%;margin:0;background:var(--steel);color:var(--graphite);overflow:hidden;
-  font-family:"Zen Kaku Gothic New","Hiragino Sans",sans-serif}
-canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
-.frame{position:fixed;inset:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px));
-  pointer-events:none;display:grid;grid-template-rows:auto 1fr auto}
-.top,.bottom{display:flex;justify-content:space-between;align-items:baseline;gap:16px}
-.logo{font-family:Syne,sans-serif;font-weight:800;font-size:clamp(22px,3.2vw,34px);letter-spacing:-.02em}
-#scene{font-family:Syne,sans-serif;font-weight:500;font-size:14px}
-#hint{font-size:13px;max-width:36ch;line-height:1.6}
-.bar{width:min(220px,40vw);height:3px;background:rgba(28,30,35,.2);position:relative}
-#fill{position:absolute;inset:0 auto 0 0;width:0;background:var(--blue)}
-#start{position:fixed;inset:0;z-index:5;background:var(--steel);display:grid;place-items:center;padding:24px}
-#start .in{max-width:560px}
-#start h1{font-family:Syne,sans-serif;font-weight:800;font-size:clamp(72px,16vw,180px);line-height:.85;margin:0 0 28px;letter-spacing:-.05em}
-#start p{margin:0 0 28px;line-height:1.8;font-size:15px;max-width:34ch}
-.btns{display:flex;gap:12px;flex-wrap:wrap}
-button{font:inherit;font-weight:700;font-size:15px;padding:13px 26px;cursor:pointer;border:2px solid var(--graphite);
-  background:var(--graphite);color:var(--mist);border-radius:0}
-button.sub{background:transparent;color:var(--graphite)}
-button:focus-visible{outline:3px solid var(--blue);outline-offset:3px}
-#err{margin-top:16px;font-size:13px;color:var(--blue);min-height:1.4em}
+:root{--void:#0a0a0a;--paper:#f7f5f0;--signal:#ff3b30;--dim:#9aa0a6;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{height:100%;margin:0;background:#000;color:var(--paper);overflow:hidden;font-family:"Zen Kaku Gothic New","Hiragino Sans",sans-serif}
+#v{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);filter:brightness(.8) saturate(.85)}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:1}
+#hint{position:fixed;left:0;right:0;bottom:calc(18px + env(safe-area-inset-bottom,0px));text-align:center;z-index:2;font-size:14px;
+  text-shadow:0 1px 8px rgba(0,0,0,.8);pointer-events:none}
+#status{position:fixed;left:20px;top:calc(16px + env(safe-area-inset-top,0px));font:12px "Space Mono",monospace;color:var(--dim);z-index:2}
+#start{position:fixed;inset:0;z-index:5;background:var(--void);display:grid;place-items:center;padding:24px}
+#start .in{max-width:580px}
+#start h1{font:700 clamp(56px,12vw,130px)/.9 "Space Mono",monospace;margin:0 0 26px;letter-spacing:-.05em}
+#start h1::before{content:"";display:inline-block;width:.34em;height:.34em;border-radius:50%;background:var(--signal);margin-right:.18em;vertical-align:.12em}
+#start p{line-height:1.9;margin:0 0 24px;max-width:34ch;color:#d6d3cc}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+button{font:inherit;font-weight:700;font-size:15px;padding:12px 24px;cursor:pointer;border-radius:0;background:var(--paper);color:var(--void);border:1px solid var(--paper)}
+button.sub{background:transparent;color:var(--paper);border-color:rgba(247,245,240,.35)}
+button:focus-visible{outline:2px solid var(--signal);outline-offset:3px}
+#err{margin-top:14px;font-size:13px;color:var(--signal);min-height:1.4em;line-height:1.7}
 </style>
 </head>
 <body>
+<video id="v" playsinline muted></video>
 <canvas id="c"></canvas>
-<div class="frame">
-  <div class="top"><div class="logo">SIGNAL</div><div id="scene"></div></div>
-  <div></div>
-  <div class="bottom"><div id="hint"></div><div class="bar"><div id="fill"></div></div></div>
-</div>
+<div id="status"></div>
+<div id="hint"></div>
 <div id="start"><div class="in">
-  <h1>SIGNAL</h1>
-  <p>カメラに映るあなたを、点・線・時間の3つの表現に変換します。動けば動くほど画面が揺れ、次のシーンへ切り替わります。</p>
-  <div class="btns"><button id="go">カメラで始める</button><button id="mouse" class="sub">マウスで試す</button></div>
+  <h1>SHUTTER</h1>
+  <p>両手の親指と人差し指でL字をつくり、指でフレームを組んでください。そのまま1秒キープするとシャッターが切れ、フレームの中だけが撮影されます。撮った写真はインスタント写真のようにじわっと現像され、撮るたびに違う仕上がりになります。写真は指先で押して動かせます。</p>
+  <div class="btns"><button id="go">カメラと音で始める</button><button id="mouse" class="sub">マウスで試す</button></div>
   <div id="err"></div>
 </div></div>
-<video id="v" playsinline muted style="display:none"></video>
-<script>
-const cv=document.getElementById('c'),ctx=cv.getContext('2d');
-const video=document.getElementById('v');
-const sceneEl=document.getElementById('scene'),hintEl=document.getElementById('hint'),fill=document.getElementById('fill');
-const GW=96,GH=72,HIST=48;
-const sm=document.createElement('canvas');sm.width=GW;sm.height=GH;
-const sx=sm.getContext('2d',{willReadFrequently:true});
-let W,H,useCam=false,mouse={x:.5,y:.5,moved:0};
-let lum=new Float32Array(GW*GH),prev=null,motion=new Float32Array(GW*GH),hist=[];
-let scene=0,energy=0,flash=0,running=false;
-const SCENES=[
-  {name:'1 / 3  Dot',hint:'体を揺らすと、点が青く弾けます'},
-  {name:'2 / 3  Line',hint:'あなたの輪郭が等高線になります。手を大きく振って'},
-  {name:'3 / 3  Time',hint:'画面の上と下で時間がずれています。ゆっくり動いてみて'}
-];
-const BLUE='#2440ff',INK='#1c1e23',BG='#c9ccd1';
+<script type="module">
+const cv=document.getElementById('c'),ctx=cv.getContext('2d'),video=document.getElementById('v');
+const hint=document.getElementById('hint'),statusEl=document.getElementById('status');
+let W,H,useCam=false,landmarker=null,lastVT=-1,hands=[],cards=[],shot=0,flash=0,drag=null;
+let frame=null,hold=0,cool=0,lastFrame=null,poke=[];
+const MAXCARDS=6,HOLD=1;
 
-function resize(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0)}
+function resize(){const d=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;ctx.setTransform(d,0,0,d,0,0)}
 addEventListener('resize',resize);resize();
 
-function sample(t){
-  if(useCam&&video.readyState>=2){
-    const vr=video.videoWidth/video.videoHeight,r=GW/GH;let w=GW,h=GH;
-    if(vr>r){w=GH*vr}else{h=GW/vr}
-    sx.save();sx.translate(GW,0);sx.scale(-1,1);sx.drawImage(video,(GW-w)/2,(GH-h)/2,w,h);sx.restore();
-  }else{ // マウス用の擬似映像
-    sx.fillStyle='#ddd';sx.fillRect(0,0,GW,GH);
-    const g=sx.createRadialGradient(mouse.x*GW,mouse.y*GH,2,mouse.x*GW,mouse.y*GH,26);
-    g.addColorStop(0,'#000');g.addColorStop(1,'rgba(0,0,0,0)');sx.fillStyle=g;sx.fillRect(0,0,GW,GH);
-    sx.fillStyle='#555';sx.beginPath();sx.arc(GW/2+Math.sin(t/900)*20,GH*.62,14,0,6.28);sx.fill();
-  }
-  const d=sx.getImageData(0,0,GW,GH).data;
-  const g=new Float32Array(GW*GH);
-  for(let i=0;i<GW*GH;i++)g[i]=(d[i*4]*.3+d[i*4+1]*.59+d[i*4+2]*.11)/255;
-  let total=0;
-  if(prev)for(let i=0;i<GW*GH;i++){const df=Math.abs(g[i]-prev[i]);motion[i]=df>.1?Math.min(1,df*3):motion[i]*.7;total+=df>.1?df:0}
-  prev=g;lum=g;
-  hist.unshift(g);if(hist.length>HIST)hist.pop();
-  return total/(GW*GH);
+// ---- 音 ----
+let ac,master,noiseBuf;
+function initAudio(){
+  ac=new (window.AudioContext||window.webkitAudioContext)();master=ac.createGain();master.gain.value=.9;master.connect(ac.destination);
+  noiseBuf=ac.createBuffer(1,ac.sampleRate,ac.sampleRate);const d=noiseBuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+}
+function noise(t,dur,freq,q,vol,type='bandpass'){const s=ac.createBufferSource(),f=ac.createBiquadFilter(),g=ac.createGain();
+  s.buffer=noiseBuf;f.type=type;f.frequency.value=freq;f.Q.value=q;g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);
+  s.connect(f);f.connect(g);g.connect(master);s.start(t,Math.random()*.5);s.stop(t+dur+.02)}
+function tone(t,f,dur,vol,type='sine'){const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.01);g.gain.exponentialRampToValueAtTime(.001,t+dur);o.connect(g);g.connect(master);o.start(t);o.stop(t+dur+.05)}
+function sShutter(){if(!ac)return;const t=ac.currentTime;
+  noise(t,.03,3500,2,.6);noise(t+.07,.05,2200,3,.5);noise(t+.02,.12,800,1,.25,'lowpass');       // カシャッ
+  for(let i=0;i<7;i++)noise(t+.25+i*.045,.02,1400+i*80,8,.18);                                     // ジーッ(フィルム送り)
+}
+function sTick(p){if(!ac)return;tone(ac.currentTime,600+p*900,.05,.06,'square')}
+function sDevelop(){if(!ac)return;const t=ac.currentTime;[523.3,659.3,784,1046.5].forEach((f,i)=>tone(t+i*.12,f,1.4,.05))}
+
+// ---- 手の認識 ----
+async function loadHands(){
+  statusEl.textContent='loading hand model…';
+  const {FilesetResolver,HandLandmarker}=await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+  const fs=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+  landmarker=await HandLandmarker.createFromOptions(fs,{
+    baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',delegate:'GPU'},
+    runningMode:'VIDEO',numHands:2});
+  statusEl.textContent='';
+}
+function cover(){const vr=video.videoWidth/video.videoHeight;let dw=W,dh=W/vr;if(dh<H){dh=H;dw=H*vr}return{dw,dh}}
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+function trackHands(){
+  if(!landmarker||video.readyState<2||video.currentTime===lastVT)return;
+  lastVT=video.currentTime;
+  const res=landmarker.detectForVideo(video,performance.now()),{dw,dh}=cover();
+  const sc=l=>({x:W-((W-dw)/2+l.x*dw),y:(H-dh)/2+l.y*dh});
+  hands=(res.landmarks||[]).map(l=>{
+    const size=dist(l[0],l[9])||.1;
+    const idx=dist(l[8],l[0])>dist(l[6],l[0])*1.12,mid=dist(l[12],l[0])>dist(l[10],l[0])*1.12;
+    const thumb=dist(l[4],l[5])>size*.5;
+    return{L:idx&&thumb&&!mid,thumb:sc(l[4]),index:sc(l[8]),corner:sc(l[5])};
+  });
 }
 
-function drawDot(t){
-  const cw=W/GW,ch=H/GH,step=Math.max(cw,ch)*1.1;
-  const cols=Math.ceil(W/step),rows=Math.ceil(H/step);
-  for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
-    const gx=Math.min(GW-1,(x*step/W*GW)|0),gy=Math.min(GH-1,(y*step/H*GH)|0),i=gy*GW+gx;
-    const dark=1-lum[i],m=motion[i];
-    const r=dark*step*.55+m*step*.4;
-    if(r<.6)continue;
-    const off=m*step*1.5;
-    ctx.fillStyle=m>.25?BLUE:INK;
-    ctx.beginPath();ctx.arc(x*step+step/2+(Math.random()-.5)*off,y*step+step/2+(Math.random()-.5)*off,r,0,6.28);ctx.fill();
-  }
+// ---- フレーム検出:両手のL字でできた四角 ----
+function detectFrame(){
+  if(!useCam)return drag&&drag.w>20&&drag.h>20?{x:drag.x,y:drag.y,w:drag.w,h:drag.h,ok:true}:null;
+  const Ls=hands.filter(h=>h.L);
+  if(Ls.length<2){hint.textContent=Ls.length===1?'もう片方の手もL字にしてフレームをつくって':'両手の親指と人差し指でフレームをつくって、1秒キープ';return null}
+  const pts=Ls.flatMap(h=>[h.thumb,h.index,h.corner]);
+  const x0=Math.min(...pts.map(p=>p.x)),x1=Math.max(...pts.map(p=>p.x)),y0=Math.min(...pts.map(p=>p.y)),y1=Math.max(...pts.map(p=>p.y));
+  const r={x:x0,y:y0,w:x1-x0,h:y1-y0,ok:(x1-x0)*(y1-y0)>W*H*.03};
+  hint.textContent=r.ok?'そのままキープ':'もう少しフレームを大きく';
+  return r;
 }
 
-function drawLine(t){
-  const rows=46,gap=H/rows,amp=gap*2.6;
-  ctx.lineWidth=1.4;ctx.lineJoin='round';
-  for(let r=0;r<rows;r++){
-    const gy=Math.min(GH-1,(r/rows*GH)|0);let hot=0;
-    ctx.beginPath();
-    for(let gx=0;gx<GW;gx++){
-      const i=gy*GW+gx,m=motion[i];hot+=m;
-      const px=gx/(GW-1)*W;
-      const py=r*gap+gap/2-(1-lum[i])*amp+Math.sin(gx*.8+t/60)*m*gap*1.8;
-      gx?ctx.lineTo(px,py):ctx.moveTo(px,py);
+// ---- 撮影と仕上げ ----
+const FX=['duotone','halftone','mosaic','grain'];
+function capture(r){
+  const full=document.createElement('canvas');full.width=W;full.height=H;const f=full.getContext('2d');
+  if(useCam&&video.readyState>=2){const {dw,dh}=cover();f.translate(W,0);f.scale(-1,1);f.drawImage(video,(W-dw)/2,(H-dh)/2,dw,dh);f.setTransform(1,0,0,1,0,0)}
+  else{const g=f.createLinearGradient(0,0,W,H);g.addColorStop(0,'#335');g.addColorStop(1,'#c96');f.fillStyle=g;f.fillRect(0,0,W,H);
+    for(let i=0;i<30;i++){f.fillStyle=`hsl(${Math.random()*360},60%,60%)`;f.beginPath();f.arc(Math.random()*W,Math.random()*H,20+Math.random()*80,0,6.3);f.fill()}}
+  const w=Math.max(40,Math.round(r.w)),h=Math.max(40,Math.round(r.h));
+  const img=document.createElement('canvas');img.width=w;img.height=h;const g=img.getContext('2d');
+  g.drawImage(full,r.x,r.y,r.w,r.h,0,0,w,h);
+  const kind=FX[shot%FX.length];stylize(img,kind);
+  shot++;
+  const base=Math.min(W,H)*.26,s=base/Math.max(w,h);
+  const tx=W*(.12+Math.random()*.76),ty=H*(.15+Math.random()*.6);
+  cards.push({img,kind,no:shot,time:new Date(),cw:w*s,ch:h*s,x:r.x+r.w/2,y:r.y+r.h/2,sc:Math.max(r.w,r.h)/base,
+    rot:0,tr:(Math.random()-.5)*.35,tx,ty,vx:0,vy:0,born:performance.now(),dev:0,fade:1,settled:false,sounded:false});
+  if(cards.length>MAXCARDS)cards[0].dying=true;
+  flash=1;sShutter();
+}
+function stylize(c,kind){
+  const g=c.getContext('2d'),w=c.width,h=c.height,im=g.getImageData(0,0,w,h),d=im.data;
+  const lum=i=>(d[i]*.3+d[i+1]*.59+d[i+2]*.11)/255;
+  if(kind==='duotone'){const A=[28,24,70],B=[255,120,90];
+    for(let i=0;i<d.length;i+=4){const l=Math.pow(lum(i),.9);d[i]=A[0]+(B[0]-A[0])*l;d[i+1]=A[1]+(B[1]-A[1])*l;d[i+2]=A[2]+(B[2]-A[2])*l}
+    g.putImageData(im,0,0)}
+  if(kind==='grain'){for(let i=0;i<d.length;i+=4){let l=lum(i);l=Math.min(1,Math.max(0,(l-.5)*1.5+.5+(Math.random()-.5)*.18));const v=l*255;d[i]=v;d[i+1]=v*.97;d[i+2]=v*.92}
+    g.putImageData(im,0,0)}
+  if(kind==='mosaic'){const b=Math.max(6,Math.round(Math.min(w,h)/28));g.fillStyle='#000';g.fillRect(0,0,w,h);
+    for(let y=0;y<h;y+=b)for(let x=0;x<w;x+=b){const i=(Math.min(h-1,y+b/2|0)*w+Math.min(w-1,x+b/2|0))*4;
+      g.fillStyle=`rgb(${d[i]},${d[i+1]},${d[i+2]})`;g.fillRect(x,y,b-1,b-1)}}
+  if(kind==='halftone'){const b=Math.max(5,Math.round(Math.min(w,h)/40));g.fillStyle='#f4efe4';g.fillRect(0,0,w,h);g.fillStyle='#1b2a6b';
+    for(let y=0;y<h;y+=b)for(let x=(y/b%2)*b/2;x<w;x+=b){const i=(Math.min(h-1,y|0)*w+Math.min(w-1,x|0))*4,r=(1-lum(i))*b*.62;
+      if(r>.3){g.beginPath();g.arc(x,y,r,0,6.3);g.fill()}}}
+}
+
+// ---- 写真の描画と動き ----
+function updateCards(dt,now){
+  for(const c of cards){
+    const age=(now-c.born)/1000;
+    if(!c.settled){const k=Math.min(1,age/.9),e=1-Math.pow(1-k,3);          // 撮った位置から飛んでいく
+      c.x+=(c.tx-c.x)*.12;c.y+=(c.ty-c.y)*.12;c.sc+=(1-c.sc)*.12;c.rot+=(c.tr-c.rot)*.1;if(k>=1){c.settled=true;c.sc=1}}
+    else{
+      for(const p of poke){const inside=Math.abs(p.x-c.x)<c.cw/2+14&&Math.abs(p.y-c.y)<c.ch/2+30;
+        if(inside){c.vx+=p.vx*.35;c.vy+=p.vy*.35;c.vr=(c.vr||0)+(p.vx*(p.y-c.y)-p.vy*(p.x-c.x))*.00002}}
+      c.x+=c.vx;c.y+=c.vy;c.vx*=.9;c.vy*=.9;c.rot+=(c.vr||0);c.vr=(c.vr||0)*.9;
+      const hw=c.cw/2,hh=c.ch/2;
+      if(c.x<hw){c.x=hw;c.vx*=-.5}if(c.x>W-hw){c.x=W-hw;c.vx*=-.5}if(c.y<hh){c.y=hh;c.vy*=-.5}if(c.y>H-hh-30){c.y=H-hh-30;c.vy*=-.5}
     }
-    ctx.strokeStyle=hot>6?BLUE:INK;ctx.stroke();
+    c.dev=Math.min(1,Math.max(0,(age-.6)/3.2));                             // 3秒ほどかけて現像
+    if(c.dev>=1&&!c.sounded){c.sounded=true;sDevelop()}
+    if(c.dying)c.fade-=dt*1.5;
   }
+  cards=cards.filter(c=>c.fade>0);
+}
+function drawCard(c){
+  const pad=c.cw*.06,bottom=c.cw*.2;
+  ctx.save();ctx.globalAlpha=Math.max(0,c.fade);ctx.translate(c.x,c.y);ctx.rotate(c.rot);ctx.scale(c.sc,c.sc);
+  ctx.shadowColor='rgba(0,0,0,.45)';ctx.shadowBlur=24;ctx.shadowOffsetY=8;
+  ctx.fillStyle='#f7f5f0';ctx.fillRect(-c.cw/2-pad,-c.ch/2-pad,c.cw+pad*2,c.ch+pad+bottom);
+  ctx.shadowColor='transparent';
+  ctx.fillStyle='#2b2a28';ctx.fillRect(-c.cw/2,-c.ch/2,c.cw,c.ch);
+  ctx.globalAlpha=Math.max(0,c.fade)*c.dev;
+  ctx.filter=`sepia(${(1-c.dev)*.8}) brightness(${1.6-c.dev*.6})`;
+  ctx.drawImage(c.img,-c.cw/2,-c.ch/2,c.cw,c.ch);ctx.filter='none';
+  ctx.globalAlpha=Math.max(0,c.fade);
+  ctx.fillStyle='#55524c';ctx.font=`${Math.max(9,c.cw*.055)}px "Space Mono",monospace`;ctx.textBaseline='middle';
+  const hh=String(c.time.getHours()).padStart(2,'0'),mm=String(c.time.getMinutes()).padStart(2,'0');
+  ctx.fillText(`No.${String(c.no).padStart(2,'0')}  ${hh}:${mm}`,-c.cw/2,c.ch/2+bottom*.55);
+  ctx.textAlign='right';ctx.fillText(c.kind,c.cw/2,c.ch/2+bottom*.55);
+  ctx.restore();
+}
+function drawFrame(r,p){
+  const L=Math.min(r.w,r.h)*.18,col=r.ok?'rgba(247,245,240,.95)':'rgba(247,245,240,.4)';
+  ctx.strokeStyle=col;ctx.lineWidth=3;
+  [[r.x,r.y,1,1],[r.x+r.w,r.y,-1,1],[r.x,r.y+r.h,1,-1],[r.x+r.w,r.y+r.h,-1,-1]].forEach(([x,y,sx,sy])=>{
+    ctx.beginPath();ctx.moveTo(x+sx*L,y);ctx.lineTo(x,y);ctx.lineTo(x,y+sy*L);ctx.stroke()});
+  if(r.ok&&p>0){ctx.strokeStyle='#ff3b30';ctx.lineWidth=4;ctx.beginPath();
+    const per=2*(r.w+r.h),len=per*p;let x=r.x,y=r.y,left=len;
+    ctx.moveTo(x,y);const segs=[[r.w,0],[0,r.h],[-r.w,0],[0,-r.h]];
+    for(const [dx,dy] of segs){const s=Math.hypot(dx,dy),u=Math.min(1,left/s);x+=dx*u;y+=dy*u;ctx.lineTo(x,y);left-=s;if(left<=0)break}
+    ctx.stroke();
+    ctx.fillStyle='#ff3b30';ctx.beginPath();ctx.arc(r.x+14,r.y+14,5,0,6.3);ctx.fill()}
 }
 
-function drawTime(){
-  const cw=W/GW,ch=H/GH;
-  for(let gy=0;gy<GH;gy++){
-    const f=hist[Math.min(hist.length-1,Math.floor(gy/GH*hist.length))];
-    for(let gx=0;gx<GW;gx++){
-      const v=f[gy*GW+gx];
-      if(v>.62)continue;
-      ctx.fillStyle=motion[gy*GW+gx]>.3?BLUE:INK;
-      const s=(1-v)*1.05;
-      ctx.fillRect(gx*cw+cw*(1-s)/2,gy*ch,cw*s,ch+.5);
-    }
-  }
-}
+let lastT=performance.now(),lastTick=-1;
+function loop(now){
+  const dt=Math.min(.05,(now-lastT)/1000);lastT=now;
+  trackHands();
+  // 指先で写真を押す
+  const tips=useCam?hands.map(h=>h.index):(drag||!mouseP?[]:[mouseP]);
+  poke=tips.map((p,i)=>{const o=lastFrame&&lastFrame[i];return{x:p.x,y:p.y,vx:o?p.x-o.x:0,vy:o?p.y-o.y:0}});lastFrame=tips.map(p=>({...p}));
+  if(cool>0)cool-=dt;
+  const r=detectFrame();
+  if(r&&r.ok&&cool<=0){
+    if(useCam){const c={x:r.x+r.w/2,y:r.y+r.h/2};
+      if(frame&&Math.hypot(c.x-frame.cx,c.y-frame.cy)>Math.min(W,H)*.08)hold=0;            // 大きく動いたらやり直し
+      frame={...r,cx:c.x,cy:c.y};hold+=dt;
+      const step=Math.floor(hold/HOLD*4);if(step!==lastTick&&step<4){lastTick=step;sTick(step/4)}
+      if(hold>=HOLD){capture(r);hold=0;cool=1.4;lastTick=-1;hint.textContent='撮影しました'}}
+  }else{hold=Math.max(0,hold-dt*2);lastTick=-1;if(!r)frame=null}
 
-function loop(t){
-  const m=sample(t);
-  ctx.fillStyle=BG;ctx.fillRect(0,0,W,H);
-  [drawDot,drawLine,drawTime][scene](t);
-  // 動きの量でエネルギーが溜まり、満タンで次のシーンへ
-  energy=Math.min(1,energy+m*.9);
-  fill.style.width=(energy*100)+'%';
-  if(energy>=1){scene=(scene+1)%3;energy=0;flash=1;setText()}
-  if(flash>0){ctx.fillStyle=`rgba(36,64,255,${flash*.9})`;ctx.fillRect(0,0,W,H);flash-=.06}
+  ctx.clearRect(0,0,W,H);
+  updateCards(dt,now);cards.forEach(drawCard);
+  if(r&&cool<=0)drawFrame(r,useCam?hold/HOLD:0);
+  for(const p of tips){ctx.beginPath();ctx.arc(p.x,p.y,7,0,6.3);ctx.strokeStyle='rgba(247,245,240,.8)';ctx.lineWidth=2;ctx.stroke()}
+  if(flash>0){ctx.fillStyle=`rgba(255,255,255,${flash})`;ctx.fillRect(0,0,W,H);flash-=dt*3.5}
   requestAnimationFrame(loop);
 }
-function setText(){sceneEl.textContent=SCENES[scene].name;hintEl.textContent=SCENES[scene].hint}
 
-function begin(){document.getElementById('start').style.display='none';setText();if(!running){running=true;requestAnimationFrame(loop)}}
+function begin(){initAudio();ac.resume();document.getElementById('start').style.display='none';requestAnimationFrame(loop)}
 document.getElementById('go').onclick=async()=>{
-  try{const s=await navigator.mediaDevices.getUserMedia({video:{width:640,height:480,facingMode:'user'},audio:false});
-    video.srcObject=s;await video.play();useCam=true;begin();
-  }catch(e){document.getElementById('err').textContent='カメラを起動できませんでした。ブラウザのカメラ許可を確認するか、「マウスで試す」を押してください。'}
+  const err=document.getElementById('err');
+  try{const s=await navigator.mediaDevices.getUserMedia({video:{width:1280,height:720,facingMode:'user'},audio:false});
+    video.srcObject=s;await video.play();useCam=true;
+  }catch(e){err.textContent='カメラを起動できませんでした。ブラウザのカメラ許可を確認するか、「マウスで試す」を押してください。';return}
+  begin();
+  try{await loadHands()}catch(e){statusEl.textContent='手の認識モデルを読み込めませんでした。ネット接続を確認し、HTMLファイルをChromeで直接開いてください。'}
 };
-document.getElementById('mouse').onclick=()=>{useCam=false;begin()};
-addEventListener('pointermove',e=>{mouse.x=e.clientX/W;mouse.y=e.clientY/H});
+// マウス:ドラッグで枠を描いて離すと撮影、カーソルで写真を押せる
+let mouseP=null,dragStart=null;
+document.getElementById('mouse').onclick=()=>{useCam=false;hint.textContent='ドラッグでフレームを描いて、離すと撮影';begin()};
+addEventListener('pointerdown',e=>{if(useCam||e.target.closest('button'))return;dragStart={x:e.clientX,y:e.clientY}});
+addEventListener('pointermove',e=>{if(useCam)return;mouseP={x:e.clientX,y:e.clientY};
+  if(dragStart)drag={x:Math.min(dragStart.x,e.clientX),y:Math.min(dragStart.y,e.clientY),w:Math.abs(e.clientX-dragStart.x),h:Math.abs(e.clientY-dragStart.y)}});
+addEventListener('pointerup',()=>{if(useCam)return;if(drag&&drag.w>20&&drag.h>20)capture(drag);drag=null;dragStart=null});
 </script>
 </body>
 </html>
